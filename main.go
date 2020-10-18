@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"skeduler/config"
 )
 
 const port = 8080
@@ -14,5 +15,7 @@ func handleRequests() {
 }
 
 func main() {
+	config.Connect()
+
 	handleRequests()
 }
