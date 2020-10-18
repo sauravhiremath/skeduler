@@ -1,3 +1,5 @@
 #!/bin/bash
 go build -o build/ .
-./build/skeduler
+echo "[*] Build completed"
+./build/skeduler || echo "[x] SERVER INITIALISATION FAILED"
+echo "[*] Server closed successfully"
