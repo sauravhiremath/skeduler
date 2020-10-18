@@ -2,16 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"regexp"
+	"skeduler/controllers"
 	"strings"
+	"time"
 )
 
 var routes = []route{
 	newRoute("GET", "/test", getTest),
-	newRoute("GET", "/meetings", handleMeeting),
+	newRoute("GET", "/meetings", getMeetingHandler),
 	newRoute("GET", "/meetings/([^/]+)", getMeetingWithID),
 	newRoute("POST", "/meetings", createMeeting),
 }
@@ -37,6 +40,7 @@ func Serve(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			ctx := context.WithValue(r.Context(), ctxKey{}, matches[1:])
+			w.Header().Set("Content-Type", "application/json")
 			route.handler(w, r.WithContext(ctx))
 			return
 		}
@@ -53,40 +57,75 @@ type ctxKey struct{}
 
 func getField(r *http.Request, index int) string {
 	fields := r.Context().Value(ctxKey{}).([]string)
-	log.Println(fields)
 	return fields[index]
 }
 
 func createMeeting(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "createMeeting\n")
+	var body controllers.Meeting
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	err := dec.Decode(&body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		http.Error(w, "Can't read body. Try again!", http.StatusBadRequest)
+		return
+	}
+	// TODO: Use for unit tests later
+	// fmt.Fprint(w, body.Participants[0], "\n")
+	// fmt.Fprint(w, body.StartTime, "\n")
+	// fmt.Fprint(w, body.EndTime, "\n")
+	// fmt.Fprint(w, body.Title, "\n")
+
+	message := controllers.CreateMeeting(body)
+	response, err := json.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
+	w.Write(response)
+
 }
 
-func handleMeeting(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "handleMeeting\n")
+func getMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	paramParticipant := r.URL.Query().Get("participant")
 	paramStart := r.URL.Query().Get("start")
 	paramEnd := r.URL.Query().Get("end")
 
 	if paramParticipant != "" {
-		listMeetingsGivenParticipant(w, r)
+		_meetingsGivenParticipant(w)
 	} else if paramStart != "" && paramEnd != "" {
-		listMeetingsGivenTime(w, r)
+		_meetingsGivenTime(w, paramStart, paramEnd)
 	}
 }
 
-func listMeetingsGivenTime(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "listMeetingsWithTime %s\n", r.URL.Query())
-}
-
-func listMeetingsGivenParticipant(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "listMeetingsWithTime %s\n", r.URL.Query())
-}
-
 func getMeetingWithID(w http.ResponseWriter, r *http.Request) {
-	slug := getField(r, 0)
-	fmt.Fprintf(w, "getMeetingWithId %s\n", slug)
+	meetingID := getField(r, 0)
+	fmt.Fprintf(w, "getMeetingWithId %s\n", meetingID)
 }
 
 func getTest(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "API test\n")
+}
+
+func _meetingsGivenTime(w http.ResponseWriter, start string, end string) {
+	startTime, err := time.Parse(time.RFC3339, start)
+	if err != nil {
+		panic(err)
+	}
+
+	endTime, err := time.Parse(time.RFC3339, end)
+	if err != nil {
+		panic(err)
+	}
+
+	message := controllers.GetAllMeetings(startTime, endTime)
+	response, err := json.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
+	w.Write(response)
+}
+
+func _meetingsGivenParticipant(w http.ResponseWriter) {
+	fmt.Fprintf(w, "listMeetingsWithTime\n")
 }
