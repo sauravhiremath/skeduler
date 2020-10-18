@@ -31,9 +31,8 @@ func Connect() {
 	} else {
 		log.Println("[*] Connected!")
 	}
-	meetingsDB := client.Database("meetings")
-	// participantsDB := client.Database("participants")
-	controllers.MeetingCollection(meetingsDB)
-	// controllers.ParticipantCollection(db);
+	skedulerDB := client.Database("skeduler")
+	controllers.Collection(skedulerDB)
+
 	return
 }
