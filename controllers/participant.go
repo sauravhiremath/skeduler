@@ -38,18 +38,19 @@ type Participant struct {
 // DATABASE INSTANCE
 var pCollection *mongo.Collection
 
-func getSingleParticipant(email string, noAccMails chan string) {
-	defer wg.Done()
-
+func getSingleParticipant(email string) Participant {
 	participant := Participant{}
 	err := pCollection.FindOne(context.TODO(), bson.M{"email": email}).Decode(&participant)
 	if err != nil {
 		log.Println("[x] Participant not found during meeting creation! Adding to DB...")
-		noAccMails <- email
 	}
+
+	return participant
 }
 
-func createSingleParticipant(email string) {
+func createParticipant(email string, ch chan Participant) {
+	wg.Done()
+
 	nameRegex := regexp.MustCompile("[^@]+")
 	newParticipant := Participant{
 		Name:  nameRegex.FindString(email),
@@ -62,4 +63,23 @@ func createSingleParticipant(email string) {
 	if err != nil {
 		log.Printf("Error while inserting new participant into db, Reason: %v\n", err)
 	}
+
+	ch <- newParticipant
+}
+
+func bulkAddParticipants(emails []string) []Participant {
+	var participants []Participant
+	ch := make(chan Participant, len(emails))
+
+	for _, email := range emails {
+		wg.Add(1)
+		go createParticipant(email, ch)
+	}
+	wg.Wait()
+	close(ch)
+
+	for participant := range ch {
+		participants = append(participants, participant)
+	}
+	return participants
 }

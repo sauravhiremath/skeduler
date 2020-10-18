@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -22,12 +21,12 @@ type MeetingResponse struct {
 
 // Meeting represents Meeting collection structure
 type Meeting struct {
-	ID           string    `json:"id,omitempty"`
-	Title        string    `json:"title"`
-	Participants []string  `json:"participants"`
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	ID           string        `json:"id,omitempty"`
+	Title        string        `json:"title"`
+	Participants []Participant `json:"participants"`
+	StartTime    time.Time     `json:"start_time"`
+	EndTime      time.Time     `json:"end_time"`
+	CreatedAt    time.Time     `json:"created_at,omitempty"`
 }
 
 // DATABASE INSTANCE
@@ -94,10 +93,20 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 		CreatedAt:    time.Now().UTC(),
 	}
 
-	_, err := mCollection.InsertOne(context.TODO(), newMeeting)
+	busyAccounts := checkTimeOverlap(participants, startTime, endTime)
 
-	newAccountsCreated := _addNewParticipants(newMeeting.Participants, newMeeting)
-	log.Println(newAccountsCreated)
+	if len(busyAccounts) > 0 {
+		log.Printf("[x] Participants have clashing schedules %v", busyAccounts)
+		message := MeetingResponse{
+			http.StatusInternalServerError,
+			"Some participants have clashing schedules. Kindly Try Again!",
+			[]Meeting{meeting},
+			time.Now().UTC(),
+		}
+		return message
+	}
+
+	_, err := mCollection.InsertOne(context.TODO(), newMeeting)
 
 	if err != nil {
 		log.Printf("Error while inserting new meeting into db, Reason: %v\n", err)
@@ -112,9 +121,7 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 
 	message := MeetingResponse{
 		http.StatusOK,
-		"Meeting creating successfully." +
-			"New Accounts created for: " +
-			strings.Join(newAccountsCreated, ", "),
+		"Meeting creating successfully.",
 		[]Meeting{},
 		time.Now().UTC(),
 	}
@@ -146,58 +153,72 @@ func GetSingleMeeting(meetingID string) MeetingResponse {
 
 // GetMeetingForParticipant returns all meetings the given participant is inside
 func GetMeetingForParticipant(email string) MeetingResponse {
-	meeting := Meeting{}
-	err := mCollection.FindOne(context.TODO(), bson.M{
+	meetings := []Meeting{}
+	cursor, err := mCollection.Find(context.TODO(), bson.M{
 		"participants": bson.M{
-			"$all": []string{email},
-		}}).Decode(&meeting)
+			"email": bson.M{
+				"$all": []string{email},
+			},
+		}})
+
 	if err != nil {
 		log.Println(err)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting/s not found for participant. Kindly Try Again",
-			[]Meeting{meeting},
+			meetings,
 			time.Now().UTC(),
 		}
 		return message
 	}
 
+	// Iterate through the returned cursor.
+	for cursor.Next(context.TODO()) {
+		var meeting Meeting
+		cursor.Decode(&meeting)
+		meetings = append(meetings, meeting)
+	}
+
 	message := MeetingResponse{
 		http.StatusOK,
 		"Requested Meeting/s for Participant Found",
-		[]Meeting{meeting},
+		meetings,
 		time.Now().UTC(),
 	}
 	return message
 
 }
 
-// func (doc *Meeting) participantPool() chan string {
-// 	notAccEmails := make(chan string, len(doc.Participants))
+func checkTimeOverlap(participants []Participant, startTime time.Time, endTime time.Time) map[string]string {
+	var emails []string
+	for _, p := range participants {
+		emails = append(emails, p.Email)
+	}
 
-// 	for _, email := range doc.Participants {
-// 		go getSingleParticipant(email, notAccEmails)
-// 	}
-// 	defer close(notAccEmails)
-
-// 	return notAccEmails
-// }
-
-func _addNewParticipants(emails []string, doc Meeting) []string {
-	var newAccounts []string
-	notAccEmails := make(chan string, len(emails))
+	overlappingMeetings := make(map[string]string, len(emails))
 
 	for _, email := range emails {
-		wg.Add(1)
-		go getSingleParticipant(email, notAccEmails)
-	}
-	wg.Wait()
-	close(notAccEmails)
+		cursor, err := mCollection.Find(context.TODO(), bson.M{
+			"participants.email": bson.M{
+				"$all": []string{email},
+			},
+			"participants.rsvp": "Yes",
+		})
 
-	for email := range notAccEmails {
-		newAccounts = append(newAccounts, email)
-		createSingleParticipant(email)
+		if err != nil {
+			log.Println(err)
+		}
+
+		// Iterate through the returned cursor.
+		for cursor.Next(context.TODO()) {
+			var meeting Meeting
+			cursor.Decode(&meeting)
+			overlap := meeting.StartTime.Before(endTime) && meeting.EndTime.After(startTime)
+			if overlap {
+				overlappingMeetings[email] = meeting.ID
+			}
+		}
 	}
 
-	return newAccounts
+	return overlappingMeetings
 }
