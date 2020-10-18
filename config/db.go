@@ -12,8 +12,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-var dbname string = os.Getenv("mongo_dbname")
-var password string = os.Getenv("mongo_password")
+var dbname string = os.Getenv("MONGO_DBNAME")
+var password string = os.Getenv("MONGO_PASSWORD")
 
 // Connect initialises mongoDB driver
 func Connect() {
@@ -27,12 +27,13 @@ func Connect() {
 
 	err = client.Ping(context.Background(), readpref.Primary())
 	if err != nil {
-		log.Fatal("Couldn't connect to the database", err)
+		log.Fatal("[x] Couldn't connect to the database", err)
 	} else {
-		log.Println("Connected!")
+		log.Println("[*] Connected!")
 	}
-	db := client.Database("go_mongo")
-	controllers.MeetingCollection(db)
+	meetingsDB := client.Database("meetings")
+	// participantsDB := client.Database("participants")
+	controllers.MeetingCollection(meetingsDB)
 	// controllers.ParticipantCollection(db);
 	return
 }
