@@ -3,17 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 )
 
 var routes = []route{
-	newRoute("POST", "/meetings", createMeeting),
-	newRoute("GET", "/meetings/([^/]+)", getMeetingWithID),
-	newRoute("GET", "/meetings?start=([^/]+)&end=([^/]+)", listMeetingsGivenTime),
-	newRoute("GET", "/meetings?participant=([^/]+)", listMeetingsGivenParticipant),
 	newRoute("GET", "/test", getTest),
+	newRoute("GET", "/meetings", handleMeeting),
+	newRoute("GET", "/meetings/([^/]+)", getMeetingWithID),
+	newRoute("POST", "/meetings", createMeeting),
 }
 
 func newRoute(method, pattern string, handler http.HandlerFunc) route {
@@ -53,6 +53,7 @@ type ctxKey struct{}
 
 func getField(r *http.Request, index int) string {
 	fields := r.Context().Value(ctxKey{}).([]string)
+	log.Println(fields)
 	return fields[index]
 }
 
@@ -60,14 +61,25 @@ func createMeeting(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "createMeeting\n")
 }
 
+func handleMeeting(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "handleMeeting\n")
+	paramParticipant := r.URL.Query().Get("participant")
+	paramStart := r.URL.Query().Get("start")
+	paramEnd := r.URL.Query().Get("end")
+
+	if paramParticipant != "" {
+		listMeetingsGivenParticipant(w, r)
+	} else if paramStart != "" && paramEnd != "" {
+		listMeetingsGivenTime(w, r)
+	}
+}
+
 func listMeetingsGivenTime(w http.ResponseWriter, r *http.Request) {
-	slug := getField(r, 0)
-	fmt.Fprintf(w, "listMeetingsWithTime %s\n", slug)
+	fmt.Fprintf(w, "listMeetingsWithTime %s\n", r.URL.Query())
 }
 
 func listMeetingsGivenParticipant(w http.ResponseWriter, r *http.Request) {
-	slug := getField(r, 0)
-	fmt.Fprintf(w, "listMeetingsWithTime %s\n", slug)
+	fmt.Fprintf(w, "listMeetingsWithTime %s\n", r.URL.Query())
 }
 
 func getMeetingWithID(w http.ResponseWriter, r *http.Request) {
