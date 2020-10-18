@@ -20,12 +20,12 @@ type MsgResponse struct {
 
 // Meeting represents Meeting collection structure
 type Meeting struct {
-	ID           string    `json:"id"`
+	ID           string    `json:"id,omitempty"`
 	Title        string    `json:"title"`
-	Participants string    `json:"participants"`
+	Participants []string  `json:"participants"`
 	StartTime    time.Time `json:"start_time"`
 	EndTime      time.Time `json:"end_time"`
-	CreatedAt    time.Time `json:"created_at"`
+	CreatedAt    time.Time `json:"created_at,omitempty"`
 }
 
 // DATABASE INSTANCE
@@ -37,9 +37,13 @@ func MeetingCollection(c *mongo.Database) {
 }
 
 // GetAllMeetings returns all meetings scheduled between given start and end time
-func GetAllMeetings(startTime string, endTime string, r *http.Request) MsgResponse {
+func GetAllMeetings(startTime time.Time, endTime time.Time) MsgResponse {
 	meetings := []Meeting{}
-	cursor, err := collection.Find(context.TODO(), bson.M{"start_time": startTime, "end_time": endTime})
+	cursor, err := collection.Find(context.TODO(), bson.M{
+		"start_time": bson.M{
+			"$gt": startTime,
+			"$lt": endTime,
+		}})
 
 	if err != nil {
 		log.Printf("[x] Error while getting all meetings, Reason: %v\n", err)
@@ -61,47 +65,51 @@ func GetAllMeetings(startTime string, endTime string, r *http.Request) MsgRespon
 
 	message := MsgResponse{
 		http.StatusOK,
-		"All Meetings",
+		"List of all Meetings",
 		meetings,
 		time.Now().UTC(),
 	}
 	return message
 }
 
-// func CreateTodo(c *gin.Context) {
-// 	var todo Todo
-// 	c.BindJSON(&todo)
-// 	title := todo.Title
-// 	body := todo.Body
-// 	completed := todo.Completed
-// 	id := guuid.New().String()
+// CreateMeeting creates a new meeting entry
+func CreateMeeting(meeting Meeting) MsgResponse {
+	id := UUID()
+	title := meeting.Title
+	participants := meeting.Participants
+	startTime := meeting.StartTime
+	endTime := meeting.EndTime
 
-// 	newTodo := Todo{
-// 		ID:        id,
-// 		Title:     title,
-// 		Body:      body,
-// 		Completed: completed,
-// 		CreatedAt: time.Now(),
-// 		UpdatedAt: time.Now(),
-// 	}
+	newMeeting := Meeting{
+		ID:           id,
+		Title:        title,
+		Participants: participants,
+		StartTime:    startTime,
+		EndTime:      endTime,
+		CreatedAt:    time.Now().UTC(),
+	}
 
-// 	_, err := collection.InsertOne(context.TODO(), newTodo)
+	_, err := collection.InsertOne(context.TODO(), newMeeting)
 
-// 	if err != nil {
-// 		log.Printf("Error while inserting new todo into db, Reason: %v\n", err)
-// 		c.JSON(http.StatusInternalServerError, gin.H{
-// 			"status":  http.StatusInternalServerError,
-// 			"message": "Something went wrong",
-// 		})
-// 		return
-// 	}
+	if err != nil {
+		log.Printf("Error while inserting new meeting into db, Reason: %v\n", err)
+		message := MsgResponse{
+			http.StatusInternalServerError,
+			"Something went wrong. Meeting not created. Kindly Try Again",
+			make([]Meeting, 0),
+			time.Now().UTC(),
+		}
+		return message
+	}
 
-// 	c.JSON(http.StatusCreated, gin.H{
-// 		"status":  http.StatusCreated,
-// 		"message": "Todo created Successfully",
-// 	})
-// 	return
-// }
+	message := MsgResponse{
+		http.StatusOK,
+		"Meeting creating successfully",
+		make([]Meeting, 0),
+		time.Now().UTC(),
+	}
+	return message
+}
 
 // func GetSingleTodo(c *gin.Context) {
 // 	todoId := c.Param("todoId")
