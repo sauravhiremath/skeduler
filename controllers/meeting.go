@@ -50,7 +50,7 @@ func GetAllMeetings(startTime time.Time, endTime time.Time) MsgResponse {
 		message := MsgResponse{
 			http.StatusInternalServerError,
 			"Something went wrong",
-			make([]Meeting, 0),
+			[]Meeting{},
 			time.Now().UTC(),
 		}
 		return message
@@ -96,7 +96,7 @@ func CreateMeeting(meeting Meeting) MsgResponse {
 		message := MsgResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting not created. Kindly Try Again",
-			make([]Meeting, 0),
+			[]Meeting{meeting},
 			time.Now().UTC(),
 		}
 		return message
@@ -105,80 +105,59 @@ func CreateMeeting(meeting Meeting) MsgResponse {
 	message := MsgResponse{
 		http.StatusOK,
 		"Meeting creating successfully",
-		make([]Meeting, 0),
+		[]Meeting{},
 		time.Now().UTC(),
 	}
 	return message
 }
 
-// func GetSingleTodo(c *gin.Context) {
-// 	todoId := c.Param("todoId")
+// GetSingleMeeting returns full-meeting document with given meetingID
+func GetSingleMeeting(meetingID string) MsgResponse {
+	meeting := Meeting{}
+	err := collection.FindOne(context.TODO(), bson.M{"id": meetingID}).Decode(&meeting)
+	if err != nil {
+		message := MsgResponse{
+			http.StatusInternalServerError,
+			"Something went wrong. Meeting not found. Kindly Try Again",
+			[]Meeting{meeting},
+			time.Now().UTC(),
+		}
+		return message
+	}
 
-// 	todo := Todo{}
-// 	err := collection.FindOne(context.TODO(), bson.M{"id": todoId}).Decode(&todo)
-// 	if err != nil {
-// 		log.Printf("Error while getting a single todo, Reason: %v\n", err)
-// 		c.JSON(http.StatusNotFound, gin.H{
-// 			"status":  http.StatusNotFound,
-// 			"message": "Todo not found",
-// 		})
-// 		return
-// 	}
+	message := MsgResponse{
+		http.StatusOK,
+		"Requested Meeting Found",
+		[]Meeting{meeting},
+		time.Now().UTC(),
+	}
+	return message
+}
 
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"status":  http.StatusOK,
-// 		"message": "Single Todo",
-// 		"data":    todo,
-// 	})
-// 	return
-// }
+// GetMeetingForParticipant returns all meetings the given participant is inside
+func GetMeetingForParticipant(email string) MsgResponse {
+	meeting := Meeting{}
+	err := collection.FindOne(context.TODO(), bson.M{
+		"participants": bson.M{
+			"$all": []string{email},
+		}}).Decode(&meeting)
+	if err != nil {
+		log.Println(err)
+		message := MsgResponse{
+			http.StatusInternalServerError,
+			"Something went wrong. Meeting/s not found for participant. Kindly Try Again",
+			[]Meeting{meeting},
+			time.Now().UTC(),
+		}
+		return message
+	}
 
-// func EditTodo(c *gin.Context) {
-// 	todoId := c.Param("todoId")
-// 	var todo Todo
-// 	c.BindJSON(&todo)
-// 	completed := todo.Completed
+	message := MsgResponse{
+		http.StatusOK,
+		"Requested Meeting/s for Participant Found",
+		[]Meeting{meeting},
+		time.Now().UTC(),
+	}
+	return message
 
-// 	newData := bson.M{
-// 		"$set": bson.M{
-// 			"completed":  completed,
-// 			"updated_at": time.Now(),
-// 		},
-// 	}
-
-// 	_, err := collection.UpdateOne(context.TODO(), bson.M{"id": todoId}, newData)
-// 	if err != nil {
-// 		log.Printf("Error, Reason: %v\n", err)
-// 		c.JSON(http.StatusInternalServerError, gin.H{
-// 			"status":  500,
-// 			"message": "Something went wrong",
-// 		})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"status":  200,
-// 		"message": "Todo Edited Successfully",
-// 	})
-// 	return
-// }
-
-// func DeleteTodo(c *gin.Context) {
-// 	todoId := c.Param("todoId")
-
-// 	_, err := collection.DeleteOne(context.TODO(), bson.M{"id": todoId})
-// 	if err != nil {
-// 		log.Printf("Error while deleting a single todo, Reason: %v\n", err)
-// 		c.JSON(http.StatusInternalServerError, gin.H{
-// 			"status":  http.StatusInternalServerError,
-// 			"message": "Something went wrong",
-// 		})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"status":  http.StatusOK,
-// 		"message": "Todo deleted successfully",
-// 	})
-// 	return
-// }
+}

@@ -87,12 +87,12 @@ func createMeeting(w http.ResponseWriter, r *http.Request) {
 }
 
 func getMeetingHandler(w http.ResponseWriter, r *http.Request) {
-	paramParticipant := r.URL.Query().Get("participant")
+	paramParticipantEmail := r.URL.Query().Get("participant")
 	paramStart := r.URL.Query().Get("start")
 	paramEnd := r.URL.Query().Get("end")
 
-	if paramParticipant != "" {
-		_meetingsGivenParticipant(w)
+	if paramParticipantEmail != "" {
+		_meetingsGivenParticipant(w, paramParticipantEmail)
 	} else if paramStart != "" && paramEnd != "" {
 		_meetingsGivenTime(w, paramStart, paramEnd)
 	}
@@ -100,7 +100,12 @@ func getMeetingHandler(w http.ResponseWriter, r *http.Request) {
 
 func getMeetingWithID(w http.ResponseWriter, r *http.Request) {
 	meetingID := getField(r, 0)
-	fmt.Fprintf(w, "getMeetingWithId %s\n", meetingID)
+	message := controllers.GetSingleMeeting(meetingID)
+	response, err := json.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
+	w.Write(response)
 }
 
 func getTest(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +131,11 @@ func _meetingsGivenTime(w http.ResponseWriter, start string, end string) {
 	w.Write(response)
 }
 
-func _meetingsGivenParticipant(w http.ResponseWriter) {
-	fmt.Fprintf(w, "listMeetingsWithTime\n")
+func _meetingsGivenParticipant(w http.ResponseWriter, email string) {
+	message := controllers.GetMeetingForParticipant(email)
+	response, err := json.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
+	w.Write(response)
 }
