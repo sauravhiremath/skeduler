@@ -4,14 +4,16 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// MsgResponse represents JSON Response structure
-type MsgResponse struct {
+// MeetingResponse represents JSON Response structure for Meeting
+type MeetingResponse struct {
 	Status  int
 	Message string
 	Data    []Meeting
@@ -29,17 +31,20 @@ type Meeting struct {
 }
 
 // DATABASE INSTANCE
-var collection *mongo.Collection
+var mCollection *mongo.Collection
 
-// MeetingCollection initialises new collection
-func MeetingCollection(c *mongo.Database) {
-	collection = c.Collection("meetings")
+var wg sync.WaitGroup
+
+// Collection initialises new collections inside given database
+func Collection(c *mongo.Database) {
+	mCollection = c.Collection("meetings")
+	pCollection = c.Collection("participants")
 }
 
 // GetAllMeetings returns all meetings scheduled between given start and end time
-func GetAllMeetings(startTime time.Time, endTime time.Time) MsgResponse {
+func GetAllMeetings(startTime time.Time, endTime time.Time) MeetingResponse {
 	meetings := []Meeting{}
-	cursor, err := collection.Find(context.TODO(), bson.M{
+	cursor, err := mCollection.Find(context.TODO(), bson.M{
 		"start_time": bson.M{
 			"$gt": startTime,
 			"$lt": endTime,
@@ -47,7 +52,7 @@ func GetAllMeetings(startTime time.Time, endTime time.Time) MsgResponse {
 
 	if err != nil {
 		log.Printf("[x] Error while getting all meetings, Reason: %v\n", err)
-		message := MsgResponse{
+		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong",
 			[]Meeting{},
@@ -63,7 +68,7 @@ func GetAllMeetings(startTime time.Time, endTime time.Time) MsgResponse {
 		meetings = append(meetings, meeting)
 	}
 
-	message := MsgResponse{
+	message := MeetingResponse{
 		http.StatusOK,
 		"List of all Meetings",
 		meetings,
@@ -73,7 +78,7 @@ func GetAllMeetings(startTime time.Time, endTime time.Time) MsgResponse {
 }
 
 // CreateMeeting creates a new meeting entry
-func CreateMeeting(meeting Meeting) MsgResponse {
+func CreateMeeting(meeting Meeting) MeetingResponse {
 	id := UUID()
 	title := meeting.Title
 	participants := meeting.Participants
@@ -89,11 +94,14 @@ func CreateMeeting(meeting Meeting) MsgResponse {
 		CreatedAt:    time.Now().UTC(),
 	}
 
-	_, err := collection.InsertOne(context.TODO(), newMeeting)
+	_, err := mCollection.InsertOne(context.TODO(), newMeeting)
+
+	newAccountsCreated := _addNewParticipants(newMeeting.Participants, newMeeting)
+	log.Println(newAccountsCreated)
 
 	if err != nil {
 		log.Printf("Error while inserting new meeting into db, Reason: %v\n", err)
-		message := MsgResponse{
+		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting not created. Kindly Try Again",
 			[]Meeting{meeting},
@@ -102,9 +110,11 @@ func CreateMeeting(meeting Meeting) MsgResponse {
 		return message
 	}
 
-	message := MsgResponse{
+	message := MeetingResponse{
 		http.StatusOK,
-		"Meeting creating successfully",
+		"Meeting creating successfully." +
+			"New Accounts created for: " +
+			strings.Join(newAccountsCreated, ", "),
 		[]Meeting{},
 		time.Now().UTC(),
 	}
@@ -112,11 +122,11 @@ func CreateMeeting(meeting Meeting) MsgResponse {
 }
 
 // GetSingleMeeting returns full-meeting document with given meetingID
-func GetSingleMeeting(meetingID string) MsgResponse {
+func GetSingleMeeting(meetingID string) MeetingResponse {
 	meeting := Meeting{}
-	err := collection.FindOne(context.TODO(), bson.M{"id": meetingID}).Decode(&meeting)
+	err := mCollection.FindOne(context.TODO(), bson.M{"id": meetingID}).Decode(&meeting)
 	if err != nil {
-		message := MsgResponse{
+		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting not found. Kindly Try Again",
 			[]Meeting{meeting},
@@ -125,7 +135,7 @@ func GetSingleMeeting(meetingID string) MsgResponse {
 		return message
 	}
 
-	message := MsgResponse{
+	message := MeetingResponse{
 		http.StatusOK,
 		"Requested Meeting Found",
 		[]Meeting{meeting},
@@ -135,15 +145,15 @@ func GetSingleMeeting(meetingID string) MsgResponse {
 }
 
 // GetMeetingForParticipant returns all meetings the given participant is inside
-func GetMeetingForParticipant(email string) MsgResponse {
+func GetMeetingForParticipant(email string) MeetingResponse {
 	meeting := Meeting{}
-	err := collection.FindOne(context.TODO(), bson.M{
+	err := mCollection.FindOne(context.TODO(), bson.M{
 		"participants": bson.M{
 			"$all": []string{email},
 		}}).Decode(&meeting)
 	if err != nil {
 		log.Println(err)
-		message := MsgResponse{
+		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting/s not found for participant. Kindly Try Again",
 			[]Meeting{meeting},
@@ -152,7 +162,7 @@ func GetMeetingForParticipant(email string) MsgResponse {
 		return message
 	}
 
-	message := MsgResponse{
+	message := MeetingResponse{
 		http.StatusOK,
 		"Requested Meeting/s for Participant Found",
 		[]Meeting{meeting},
@@ -160,4 +170,34 @@ func GetMeetingForParticipant(email string) MsgResponse {
 	}
 	return message
 
+}
+
+// func (doc *Meeting) participantPool() chan string {
+// 	notAccEmails := make(chan string, len(doc.Participants))
+
+// 	for _, email := range doc.Participants {
+// 		go getSingleParticipant(email, notAccEmails)
+// 	}
+// 	defer close(notAccEmails)
+
+// 	return notAccEmails
+// }
+
+func _addNewParticipants(emails []string, doc Meeting) []string {
+	var newAccounts []string
+	notAccEmails := make(chan string, len(emails))
+
+	for _, email := range emails {
+		wg.Add(1)
+		go getSingleParticipant(email, notAccEmails)
+	}
+	wg.Wait()
+	close(notAccEmails)
+
+	for email := range notAccEmails {
+		newAccounts = append(newAccounts, email)
+		createSingleParticipant(email)
+	}
+
+	return newAccounts
 }
