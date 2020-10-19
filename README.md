@@ -9,6 +9,8 @@ Barebones meeting scheduling API. Schedule Meetings with participants
 
 # Documentation
 
+**Postman Link**: https://documenter.getpostman.com/view/8269592/TVRrX5q4
+
 ## End-point: Get all Meetings within a given timeframe
 ### Description: endTime and startTime should be in UTC Format following RFC3399
 Method: GET
