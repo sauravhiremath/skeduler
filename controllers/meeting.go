@@ -16,8 +16,8 @@ func GetSingleMeeting(meetingID string) MeetingResponse {
 	if err != nil {
 		log.Printf("[x] Error: Requested MeetingID - %v not found!\n", meetingID)
 		message := MeetingResponse{
-			http.StatusInternalServerError,
-			"Something went wrong. Meeting not found. Kindly Try Again",
+			http.StatusNotFound,
+			"Meeting not found. Kindly Try Again",
 			[]Meeting{},
 			time.Now().UTC(),
 		}
