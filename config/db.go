@@ -19,10 +19,10 @@ var password string = os.Getenv("MONGO_PASSWORD")
 // Connect initialises mongoDB driver
 func Connect() {
 	clientOptions := options.Client().ApplyURI("mongodb+srv://saurav:" + password + "@skedules.tzfcm.gcp.mongodb.net/" + dbname + "?retryWrites=true&w=majority")
-	client, err := mongo.NewClient(clientOptions)
+	client, _ := mongo.NewClient(clientOptions)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err = client.Connect(ctx)
+	_ = client.Connect(ctx)
 	//Cancel context to avoid memory leak
 	defer cancel()
 
