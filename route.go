@@ -7,9 +7,10 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"skeduler/controllers"
 	"strings"
 	"time"
+
+	"skeduler/controllers"
 )
 
 var routes = []route{
@@ -34,6 +35,9 @@ var malformedRequest, _ = json.Marshal(controllers.MalformedRequest{
 	Message: "Malformed Request, check your query again",
 	Time:    time.Now().UTC(),
 })
+
+// GetMeetingWithID exported for tests
+var GetMeetingWithID = getMeetingWithID
 
 // Serve serves the endpoints for the allowed routes
 func Serve(w http.ResponseWriter, r *http.Request) {

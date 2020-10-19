@@ -45,7 +45,7 @@ func GetAllMeetings(startTime time.Time, endTime time.Time) MeetingResponse {
 		log.Printf("[x] Error: while getting all meetings, Reason: %v\n", err)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
-			"Something went wrong",
+			"Something went wrong.",
 			[]Meeting{},
 			time.Now().UTC(),
 		}
@@ -91,8 +91,8 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 		log.Printf("[x] Error: Participants - %v have clashing schedules\n", busyAccounts)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
-			"Some participants have clashing schedules. Kindly Try Again!",
-			busyAccounts,
+			"Some participants have clashing schedules. Kindly try again!",
+			[]Meeting{},
 			time.Now().UTC(),
 		}
 		return message
@@ -114,7 +114,7 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 	message := MeetingResponse{
 		http.StatusOK,
 		"Meeting creating successfully.",
-		[]Meeting{meeting},
+		[]Meeting{newMeeting},
 		time.Now().UTC(),
 	}
 	return message

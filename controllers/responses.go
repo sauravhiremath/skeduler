@@ -6,7 +6,7 @@ import "time"
 type MeetingResponse struct {
 	Status  int
 	Message string
-	Data    interface{}
+	Data    []Meeting
 	Time    time.Time
 }
 
