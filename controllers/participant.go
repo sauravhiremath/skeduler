@@ -4,19 +4,10 @@ import (
 	"context"
 	"log"
 	"regexp"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-// ParticipantResponse represents JSON Response structure for Participant
-type ParticipantResponse struct {
-	Status  int
-	Message string
-	Data    []Participant
-	Time    time.Time
-}
 
 // RSVPMessageType represents the allowed RSVP messages for a meeting
 type RSVPMessageType int32

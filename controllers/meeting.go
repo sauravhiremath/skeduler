@@ -11,14 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// MeetingResponse represents JSON Response structure for Meeting
-type MeetingResponse struct {
-	Status  int
-	Message string
-	Data    []Meeting
-	Time    time.Time
-}
-
 // Meeting represents Meeting collection structure
 type Meeting struct {
 	ID           string        `json:"id,omitempty"`
@@ -50,7 +42,7 @@ func GetAllMeetings(startTime time.Time, endTime time.Time) MeetingResponse {
 		}})
 
 	if err != nil {
-		log.Printf("[x] Error while getting all meetings, Reason: %v\n", err)
+		log.Printf("[x] Error: while getting all meetings, Reason: %v\n", err)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong",
@@ -96,11 +88,11 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 	busyAccounts := checkTimeOverlap(participants, startTime, endTime)
 
 	if len(busyAccounts) > 0 {
-		log.Printf("[x] Participants have clashing schedules %v", busyAccounts)
+		log.Printf("[x] Error: Participants - %v have clashing schedules\n", busyAccounts)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Some participants have clashing schedules. Kindly Try Again!",
-			[]Meeting{meeting},
+			busyAccounts,
 			time.Now().UTC(),
 		}
 		return message
@@ -109,7 +101,7 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 	_, err := mCollection.InsertOne(context.TODO(), newMeeting)
 
 	if err != nil {
-		log.Printf("Error while inserting new meeting into db, Reason: %v\n", err)
+		log.Printf("[x] Error: Inserting new meeting into db, Reason: %v\n", err)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting not created. Kindly Try Again",
@@ -122,7 +114,7 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 	message := MeetingResponse{
 		http.StatusOK,
 		"Meeting creating successfully.",
-		[]Meeting{},
+		[]Meeting{meeting},
 		time.Now().UTC(),
 	}
 	return message
@@ -133,10 +125,11 @@ func GetSingleMeeting(meetingID string) MeetingResponse {
 	meeting := Meeting{}
 	err := mCollection.FindOne(context.TODO(), bson.M{"id": meetingID}).Decode(&meeting)
 	if err != nil {
+		log.Printf("[x] Error: Requested MeetingID - %v not found!\n", meetingID)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting not found. Kindly Try Again",
-			[]Meeting{meeting},
+			[]Meeting{},
 			time.Now().UTC(),
 		}
 		return message
@@ -155,14 +148,12 @@ func GetSingleMeeting(meetingID string) MeetingResponse {
 func GetMeetingForParticipant(email string) MeetingResponse {
 	meetings := []Meeting{}
 	cursor, err := mCollection.Find(context.TODO(), bson.M{
-		"participants": bson.M{
-			"email": bson.M{
-				"$all": []string{email},
-			},
+		"participants.email": bson.M{
+			"$all": []string{email},
 		}})
 
 	if err != nil {
-		log.Println(err)
+		log.Printf("[x] Error: Meeting/s not found for participant - %v. Reason: %v\n", email, err)
 		message := MeetingResponse{
 			http.StatusInternalServerError,
 			"Something went wrong. Meeting/s not found for participant. Kindly Try Again",
@@ -206,7 +197,7 @@ func checkTimeOverlap(participants []Participant, startTime time.Time, endTime t
 		})
 
 		if err != nil {
-			log.Println(err)
+			log.Printf("[x] Error: Overlapping-Meeting search failed. Reason %v", err)
 		}
 
 		// Iterate through the returned cursor.
