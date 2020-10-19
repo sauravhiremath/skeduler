@@ -3,7 +3,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/sauravhiremath/skeduler?style=for-the-badge)](https://github.com/golang/go)
 [![GitHub contributors](https://img.shields.io/github/contributors-anon/sauravhiremath/skeduler?style=for-the-badge)](https://github.com/sauravhiremath/skeduler)
 
-# skeduler
+![image](https://user-images.githubusercontent.com/28642011/96423730-5edcab80-1217-11eb-993d-46d4356d7cd1.png)
 
 Barebones meeting scheduling API. Schedule Meetings with participants
 
