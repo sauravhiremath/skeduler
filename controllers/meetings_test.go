@@ -59,7 +59,7 @@ func TestGetAllMeetings(t *testing.T) {
 	got := GetAllMeetings(startTime, endTime)
 
 	if got.Status != 200 {
-		t.Errorf("Returned wrong Status Code. Got %q, expected %q", got1.Status, 200)
+		t.Errorf("Returned wrong Status Code. Got %q, expected %q", got.Status, 200)
 	}
 }
 
@@ -69,6 +69,6 @@ func TestGetMeetingForParticipant(t *testing.T) {
 	got := GetMeetingForParticipant(email)
 
 	if got.Status != 200 {
-		t.Errorf("Returned wrong Status Code. Got %q, expected %q", got1.Status, 200)
+		t.Errorf("Returned wrong Status Code. Got %q, expected %q", got.Status, 200)
 	}
 }
