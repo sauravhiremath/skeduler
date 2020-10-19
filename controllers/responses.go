@@ -17,3 +17,10 @@ type ParticipantResponse struct {
 	Data    []Participant
 	Time    time.Time
 }
+
+// MalformedRequest represents a JSON Response structure for malformed requests
+type MalformedRequest struct {
+	Status  int
+	Message string
+	Time    time.Time
+}
