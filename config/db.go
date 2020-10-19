@@ -26,11 +26,11 @@ func Connect() {
 	//Cancel context to avoid memory leak
 	defer cancel()
 
-	err = client.Ping(context.Background(), readpref.Primary())
+	err := client.Ping(context.Background(), readpref.Primary())
 	if err != nil {
 		log.Fatal("[x] Couldn't connect to the database", err)
 	} else {
-		log.Println("[*] Connected!")
+		log.Println("[*] Database Connected!")
 	}
 	skedulerDB := client.Database("skeduler")
 	controllers.Collection(skedulerDB)
