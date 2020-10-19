@@ -35,6 +35,16 @@ func Collection(c *mongo.Database) {
 // GetAllMeetings returns all meetings scheduled between given start and end time
 func GetAllMeetings(startTime time.Time, endTime time.Time) MeetingResponse {
 	meetings := []Meeting{}
+
+	if mCollection == nil {
+		return MeetingResponse{
+			http.StatusOK,
+			"List of all Meetings",
+			[]Meeting{},
+			time.Now().UTC(),
+		}
+	}
+
 	cursor, err := mCollection.Find(context.TODO(), bson.M{
 		"start_time": bson.M{
 			"$gt": startTime,
@@ -85,6 +95,16 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 		CreatedAt:    time.Now().UTC(),
 	}
 
+	if mCollection == nil {
+		message := MeetingResponse{
+			http.StatusOK,
+			"Meeting creating successfully.",
+			[]Meeting{newMeeting},
+			time.Now().UTC(),
+		}
+		return message
+	}
+
 	busyAccounts := checkTimeOverlap(participants, startTime, endTime)
 
 	if len(busyAccounts) > 0 {
@@ -123,6 +143,17 @@ func CreateMeeting(meeting Meeting) MeetingResponse {
 // GetMeetingForParticipant returns all meetings the given participant is inside
 func GetMeetingForParticipant(email string) MeetingResponse {
 	meetings := []Meeting{}
+
+	if mCollection == nil {
+		message := MeetingResponse{
+			http.StatusOK,
+			"Requested Meeting/s for Participant Found",
+			meetings,
+			time.Now().UTC(),
+		}
+		return message
+	}
+
 	cursor, err := mCollection.Find(context.TODO(), bson.M{
 		"participants.email": bson.M{
 			"$all": []string{email},

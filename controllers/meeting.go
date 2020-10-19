@@ -12,6 +12,17 @@ import (
 // GetSingleMeeting returns full-meeting document with given meetingID
 func GetSingleMeeting(meetingID string) MeetingResponse {
 	meeting := Meeting{}
+
+	if mCollection == nil {
+		message := MeetingResponse{
+			http.StatusOK,
+			"Requested Meeting Found",
+			[]Meeting{},
+			time.Now().UTC(),
+		}
+		return message
+	}
+
 	err := mCollection.FindOne(context.TODO(), bson.M{"id": meetingID}).Decode(&meeting)
 	if err != nil {
 		log.Printf("[x] Error: Requested MeetingID - %v not found!\n", meetingID)
