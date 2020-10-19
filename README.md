@@ -107,6 +107,12 @@ Build the project to get the executable
 go build -o build/ .
 ```
 
+Run Tests for the project
+
+```
+go test ./controllers
+```
+
 Run the project directly without `build`
 
 ```

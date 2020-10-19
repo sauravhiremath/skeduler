@@ -7,5 +7,7 @@ now=$(date '+%d/%m/%Y %H:%M:%S')
 go build -o build/ .
 echo "$now [*] Build completed"
 
+go test ./...
+
 ./build/skeduler || sudo kill -9 $(sudo lsof -t -i:8080) || echo "[x] SERVER INITIALISATION FAILED"
 echo "[*] Server closed successfully"
