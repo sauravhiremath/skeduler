@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"skeduler/controllers"
+	"github.com/sauravhiremath/skeduler/controllers"
 )
 
 var routes = []route{

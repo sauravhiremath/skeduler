@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"skeduler/config"
+
+	"github.com/sauravhiremath/skeduler/config"
 )
 
 const port = 8080

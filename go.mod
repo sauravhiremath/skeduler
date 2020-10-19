@@ -1,4 +1,4 @@
-module skeduler
+module github.com/sauravhiremath/skeduler
 
 go 1.15
 
