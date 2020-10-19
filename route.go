@@ -60,6 +60,10 @@ func getField(r *http.Request, index int) string {
 	return fields[index]
 }
 
+func getTest(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "API test\n")
+}
+
 func createMeeting(w http.ResponseWriter, r *http.Request) {
 	var body controllers.Meeting
 	dec := json.NewDecoder(r.Body)
@@ -92,9 +96,9 @@ func getMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	paramEnd := r.URL.Query().Get("end")
 
 	if paramParticipantEmail != "" {
-		_meetingsGivenParticipant(w, paramParticipantEmail)
+		meetingsGivenParticipant(w, paramParticipantEmail)
 	} else if paramStart != "" && paramEnd != "" {
-		_meetingsGivenTime(w, paramStart, paramEnd)
+		meetingsGivenTime(w, paramStart, paramEnd)
 	}
 }
 
@@ -108,11 +112,7 @@ func getMeetingWithID(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
-func getTest(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "API test\n")
-}
-
-func _meetingsGivenTime(w http.ResponseWriter, start string, end string) {
+func meetingsGivenTime(w http.ResponseWriter, start string, end string) {
 	startTime, err := time.Parse(time.RFC3339, start)
 	if err != nil {
 		panic(err)
@@ -131,7 +131,7 @@ func _meetingsGivenTime(w http.ResponseWriter, start string, end string) {
 	w.Write(response)
 }
 
-func _meetingsGivenParticipant(w http.ResponseWriter, email string) {
+func meetingsGivenParticipant(w http.ResponseWriter, email string) {
 	message := controllers.GetMeetingForParticipant(email)
 	response, err := json.Marshal(message)
 	if err != nil {
