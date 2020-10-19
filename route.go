@@ -14,8 +14,8 @@ import (
 
 var routes = []route{
 	newRoute("GET", "/test", getTest),
+	newRoute("GET", "/meeting/([^/]+)", getMeetingWithID),
 	newRoute("GET", "/meetings", getMeetingHandler),
-	newRoute("GET", "/meetings/([^/]+)", getMeetingWithID),
 	newRoute("POST", "/meetings", createMeeting),
 }
 
@@ -28,6 +28,12 @@ type route struct {
 	regex   *regexp.Regexp
 	handler http.HandlerFunc
 }
+
+var malformedRequest, _ = json.Marshal(controllers.MalformedRequest{
+	Status:  http.StatusBadRequest,
+	Message: "Malformed Request, check your query again",
+	Time:    time.Now().UTC(),
+})
 
 // Serve serves the endpoints for the allowed routes
 func Serve(w http.ResponseWriter, r *http.Request) {
@@ -97,13 +103,23 @@ func getMeetingHandler(w http.ResponseWriter, r *http.Request) {
 
 	if paramParticipantEmail != "" {
 		meetingsGivenParticipant(w, paramParticipantEmail)
-	} else if paramStart != "" && paramEnd != "" {
-		meetingsGivenTime(w, paramStart, paramEnd)
+		return
 	}
+	if paramStart != "" && paramEnd != "" {
+		meetingsGivenTime(w, paramStart, paramEnd)
+		return
+	}
+
+	w.Write(malformedRequest)
 }
 
 func getMeetingWithID(w http.ResponseWriter, r *http.Request) {
 	meetingID := getField(r, 0)
+	if meetingID == "" {
+		w.Write(malformedRequest)
+		return
+	}
+
 	message := controllers.GetSingleMeeting(meetingID)
 	response, err := json.Marshal(message)
 	if err != nil {
@@ -113,14 +129,12 @@ func getMeetingWithID(w http.ResponseWriter, r *http.Request) {
 }
 
 func meetingsGivenTime(w http.ResponseWriter, start string, end string) {
-	startTime, err := time.Parse(time.RFC3339, start)
-	if err != nil {
-		panic(err)
-	}
+	startTime, err1 := time.Parse(time.RFC3339, start)
+	endTime, err2 := time.Parse(time.RFC3339, end)
 
-	endTime, err := time.Parse(time.RFC3339, end)
-	if err != nil {
-		panic(err)
+	if err1 != nil || err2 != nil {
+		w.Write(malformedRequest)
+		return
 	}
 
 	message := controllers.GetAllMeetings(startTime, endTime)
