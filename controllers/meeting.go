@@ -190,10 +190,16 @@ func checkTimeOverlap(participants []Participant, startTime time.Time, endTime t
 
 	for _, email := range emails {
 		cursor, err := mCollection.Find(context.TODO(), bson.M{
-			"participants.email": bson.M{
-				"$all": []string{email},
+			"$and": []bson.M{
+				{
+					"participants.email": bson.M{
+						"$all": []string{email},
+					},
+				},
+				{
+					"participants.rsvp": "Yes",
+				},
 			},
-			"participants.rsvp": "Yes",
 		})
 
 		if err != nil {
